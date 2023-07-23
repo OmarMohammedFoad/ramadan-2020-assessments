@@ -6,6 +6,8 @@ const VideoRequestData = require('./data/video-requests.data');
 const UserData = require('./data/user.data');
 const cors = require('cors');
 const mongoose = require('./models/mongo.config');
+const videoRequestsData = require('./data/video-requests.data');
+const multer = require('multer');
 
 if (!Object.keys(mongoose).length) return;
 
@@ -17,14 +19,26 @@ app.get('/', (req, res) =>
   res.send('Welcome to semicolon academy APIs, use /video-request to get data')
 );
 
-app.post('/video-request', async (req, res, next) => {
+const upload = multer();
+app.post('/video-request', upload.none(), async (req, res, next) => {
   const response = await VideoRequestData.createRequest(req.body);
   res.send(response);
   next();
 });
 
 app.get('/video-request', async (req, res, next) => {
-  const data = await VideoRequestData.getAllVideoRequests();
+  let { sortdata } = req.query;
+  let data = await VideoRequestData.getAllVideoRequests();
+  if (sortdata === "newFirstVoted") {
+    data = data.sort((prev, next) => {
+      if (prev.votes.ups - prev.votes.downs > next.votes.ups - next.votes.downs) {
+        return -1
+      }
+      else {
+        return 1
+      }
+    });
+  }
   res.send(data);
   next();
 });
@@ -60,9 +74,15 @@ app.put('/video-request', async (req, res, next) => {
 
 app.delete('/video-request', async (req, res, next) => {
   const response = await VideoRequestData.deleteRequest(req.body.id);
+
   res.send(response);
   next();
 });
+
+app.delete("/video-request", async (req, res, next) => {
+  await videoRequestsData.deletALL();
+  next()
+})
 
 app.listen(port, () =>
   console.log(`Example app listening at http://localhost:${port}`)

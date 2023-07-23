@@ -47,6 +47,12 @@ module.exports = {
     );
   },
 
+deletALL: async ()=>
+{
+ await VideoRequest.deleteMany();
+  
+},
+
   deleteRequest: (id) => {
     return VideoRequest.deleteOne({ _id: id });
   },
