@@ -3,10 +3,10 @@ let formGroup = document.querySelectorAll(".form-group");
 let card = document.getElementById("listOfRequests");
 let buttons = document.querySelector(".buttons");
 let search = document.getElementById("validationCustom03");
+let newDiv = document.createElement("div");
 
 const url = "http://localhost:7777";
 
-let newDiv = document.createElement("div");
 let templateVideo = function (object = {}, newFlag = false) {
   let template = ` <div class="card mb-3">
         <div class="card-body d-flex justify-content-between flex-row">
@@ -141,7 +141,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     const dataObject = Object.fromEntries(dataMap);
-
+    if (validation(dataObject)) {
+      
+    
     fetch(`${url}/video-request`, {
       method: "POST",
       headers: {
@@ -163,6 +165,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error("There was a problem with the fetch operation:", error);
       });
   };
+}
 });
 
 function debounce(fn, time) {
@@ -173,6 +176,56 @@ function debounce(fn, time) {
     timeout = setTimeout(() => fn.call(this, args), time);
   };
 }
+
+function validation(form) {
+  
+  let regName = /^[a-zA-Z0-9_]+$/;
+  let regEmail = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+  if(!form.author_name || !regName.test(form.author_name))
+  {
+    
+    
+    
+    // console.log(document.querySelector(`[name=author_name]`));
+    
+    document.querySelector(`[name=author_name]`).classList.add("is-invalid");
+  }
+
+  if(!form.author_email || !regEmail.test(form.author_email) ){
+    document.querySelector(`[name=author_email]`).classList.add("is-invalid");
+    // document.querySelector(`[name=author_email]`).nextElementSibling.classList.add("");
+    
+  }
+
+  if(!form.topic_title || !regName.test(form.topic_title) ){
+    document.querySelector(`[name=topic_title]`).classList.add("is-invalid");
+    // document.querySelector(`[name=author_email]`).nextElementSibling.classList.add("");
+    
+  }
+  if(!form.topic_details || form.topic_details.length > 100){
+    
+    
+    document.querySelector(`[name=topic_details]`).classList.add("is-invalid");
+    // document.querySelector(`[name=author_email]`).nextElementSibling.classList.add("");
+    
+  }
+ const is_invalid = document.getElementById('form-request').querySelectorAll('.is-invalid');
+  if (is_invalid.length) {
+      is_invalid.forEach(function(element){
+        element.addEventListener('input',function () {
+            element.classList.remove('is-invalid')
+        })
+      })
+    return false;
+  }
+
+return true;
+}
+
+
+
+
+
 search.addEventListener(
   "input",
   debounce((e) => {
