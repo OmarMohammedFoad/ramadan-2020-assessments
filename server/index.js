@@ -5,8 +5,10 @@ const port = process.env.PORT || 7777;
 const VideoRequestData = require('./data/video-requests.data');
 const UserData = require('./data/user.data');
 const cors = require('cors');
+// app.use(express.json());
 const mongoose = require('./models/mongo.config');
 const multer = require('multer');
+app.use(express.json());
 
 if (!Object.keys(mongoose).length) return;
 
@@ -19,18 +21,30 @@ app.get('/', (req, res) =>
 );
 
 app.post('/video-request' ,upload.none(),async (req, res, next) => {
-  console.log(req.body);
   const response = await VideoRequestData.createRequest(req.body);
   res.send(response);
   next();
 });
 
 app.get('/video-request', async (req, res, next) => {
-  const {sortby} = req.query;
-  let data = await VideoRequestData.getAllVideoRequests();
-  if(sortby === "topVotedFirst")
+  const {sortby,searchBy} = req.query;
+  
+let data;
+  if(searchBy){
+    data = await VideoRequestData.searchRequests(searchBy);
+  }else{
+    data = await VideoRequestData.getAllVideoRequests();
+  }
+   
+
+
+    console.log(data);
+    
+
+
+  
+  if(sortby === "votedFirst")
   {
-    console.log(sortby);
     data.sort((prev,next)=>
     {
       if(prev.votes.ups - prev.votes.downs > next.votes.ups-next.votes.downs)
@@ -43,7 +57,6 @@ app.get('/video-request', async (req, res, next) => {
     }
     )
   }
-
   res.send(data);
   next();
 });
@@ -60,10 +73,11 @@ app.post('/users/login', async (req, res, next) => {
   next();
 });
 
-app.use(express.json());
 
 app.put('/video-request/vote', async (req, res, next) => {
   const { id, vote_type } = req.body;
+  // console.log(vote_type,"vote_type");
+  
   const response = await VideoRequestData.updateVoteForRequest(id, vote_type);
   res.send(response);
   next();
@@ -86,3 +100,6 @@ app.delete('/video-request', async (req, res, next) => {
 app.listen(port, () =>
   console.log(`Example app listening at http://localhost:${port}`)
 );
+
+
+
