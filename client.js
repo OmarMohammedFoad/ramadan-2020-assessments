@@ -1,13 +1,15 @@
-let form = document.getElementById("form-request");
-let formGroup = document.querySelectorAll(".form-group");
-let card = document.getElementById("listOfRequests");
-let buttons = document.querySelector(".buttons");
-let search = document.getElementById("validationCustom03");
-let newDiv = document.createElement("div");
-
+var form = document.getElementById("form-request");
+var formLogin = document.getElementById("form-login-request");
+var formLoginGroup = document.querySelectorAll(".form-group-login");
+var formGroup = document.querySelectorAll(".form-group");
+var card = document.getElementById("listOfRequests");
+var buttons = document.querySelector(".buttons");
+var search = document.getElementById("validationCustom03");
+var newDiv = document.createElement("div");
+import apiCall from "./Api.js";
 const url = "http://localhost:7777";
-
-let templateVideo = function (object = {}, newFlag = false) {
+var api = apiCall(url);
+var templateVideo = function (object = {}, newFlag = false) {
   let template = ` <div class="card mb-3">
         <div class="card-body d-flex justify-content-between flex-row">
           <div class="d-flex flex-column">
@@ -18,7 +20,7 @@ let templateVideo = function (object = {}, newFlag = false) {
             </p>
           </div>
           <div class="votes d-flex flex-column text-center">
-            <a id="votes_ups_${object._id}" class="btn btn-link">🔺</a>
+            <a id="votes_ups_${object._id}" class="btn btn-link ">🔺</a>
             <h3 id="score_${object._id}">${
     object.votes.ups - object.votes.downs
   }</h3>
@@ -42,44 +44,46 @@ let templateVideo = function (object = {}, newFlag = false) {
           </div>
         </div>
         </div>`;
+  newDiv.innerHTML += template;
 
   let cardInside = document.querySelectorAll(".votes");
 
   if (cardInside) {
     cardInside.forEach((div) => {
       div.querySelectorAll("a").forEach((button) => {
-        button.addEventListener("click", function () {
-          // console.log(this.id.startsWith('votes_up'));
-          // console.log(this);
+        button.addEventListener("click", function (e) {
+          //   // console.log(this.id.startsWith('votes_up'));
+          //   // console.log(this)
 
+          const userId = localStorage.getItem("userId");
+          if(userId){
+
+          } 
           let data = {
             id: this.id.split("_")[2],
             vote_type: this.id.startsWith("votes_up") ? "ups" : "downs",
           };
 
-          fetch(`${url}/video-request/vote`, {
-            method: "PUT",
-            body: JSON.stringify(data),
-            headers: {
-              "Content-Type": "application/json",
-            },
-          })
-            .then((response) => {
-              return response.json();
-            })
-            .then((data) => {
-              let score = document.getElementById(`score_${data._id}`);
 
+          if(userId){
+            button.classList.add("disabled");
+          } 
+
+          
+
+          api
+            .updateVote(data)
+            .then((data) => {
+            
+              let score = document.getElementById(`score_${data._id}`);
               score.innerHTML = data.votes.ups - data.votes.downs;
+
             })
             .catch((err) => console.log(err));
         });
       });
     });
   }
-
-  newDiv.innerHTML += template;
-
   if (newFlag) {
     card.prepend(newDiv);
   } else {
@@ -89,17 +93,11 @@ let templateVideo = function (object = {}, newFlag = false) {
 };
 
 function fetchData(sortby = "newFirst", searchTerm = "") {
-  fetch(`${url}/video-request?sortby=${sortby}&searchBy=${searchTerm}`)
-    .then((res) => {
-      if (!res.ok) {
-        throw new Error("error while fetching");
-      }
-
-      return res.json();
-    })
-
+  api
+    .getData(sortby, searchTerm)
     .then((data) => {
       newDiv.innerHTML = ``;
+
       data.forEach((user) => {
         templateVideo(user);
       });
@@ -110,8 +108,21 @@ function fetchData(sortby = "newFirst", searchTerm = "") {
     });
 }
 
+
+
+
 document.addEventListener("DOMContentLoaded", function () {
+  const isLoggedIn = localStorage.getItem("isLoggedIn");
+  
+  if (isLoggedIn === "true") {
+    
+    document.querySelector(".login-container").classList.add("d-none");
+    document.querySelector(".app-content").classList.remove("d-none");
+  }
+  
   fetchData();
+
+
 
   buttons.childNodes.forEach(function (button) {
     button.addEventListener("click", function () {
@@ -126,13 +137,11 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  form.onsubmit = function (event) {
-    event.preventDefault();
-
+  formLogin.onsubmit = function (e) {
+    e.preventDefault();
     let dataMap = new Map();
 
-    formGroup.forEach(function (singleGroup) {
-      // console.log(singleGroup.children);
+    formLoginGroup.forEach(function (singleGroup) {
       for (const element of singleGroup.children) {
         if (element.name) {
           dataMap.set(element.name, element.value);
@@ -141,32 +150,61 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     const dataObject = Object.fromEntries(dataMap);
-    if (validation(dataObject)) {
-      
-    
-    fetch(`${url}/video-request`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(dataObject),
-    })
-      .then((Response) => {
-        if (!Response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return Response.json();
-      })
-      .then((data) => {
-        templateVideo(data, true);
-        console.log("Data has been sent successfully:", data);
-      })
-      .catch((error) => {
-        console.error("There was a problem with the fetch operation:", error);
-      });
+
+    if (validation.login(dataObject)) {
+      api
+        .postData("users/login", "POST", dataObject)
+        .then((data) => {
+          if (data.success) {
+            
+            localStorage.setItem("isLoggedIn",true);
+            localStorage.setItem("userId",data.id);
+
+
+            document.querySelector(".login-container").classList.add("d-none");
+            document.querySelector(".app-content").classList.remove("d-none");
+            
+            window.location.href = `http://localhost:5500?id=${data.id}`;
+          } else {
+            console.error("Login failed:", data.error);
+          }
+        })
+        .catch((error) => {
+          console.log(error, "error");
+        });
+    }
   };
-}
+
+  form.onsubmit = function (event) {
+    event.preventDefault();
+
+    let dataMap = new Map();
+
+    formGroup.forEach(function (singleGroup) {
+      for (const element of singleGroup.children) {
+        if (element.name) {
+          dataMap.set(element.name, element.value);
+        }
+      }
+    });
+
+    const dataObject = Object.fromEntries(dataMap);
+    if (validation.appContent(dataObject)) {
+      api
+        .postData("video-request", "POST", dataObject)
+        .then((data) => {
+          templateVideo(data, true);
+          console.log("Data has been sent successfully:", data);
+        })
+        .catch((error) => {
+          console.error("There was a problem with the fetch operation:", error);
+        });
+    }
+  };
 });
+
+
+
 
 function debounce(fn, time) {
   let timeout;
@@ -177,54 +215,56 @@ function debounce(fn, time) {
   };
 }
 
-function validation(form) {
-  
-  let regName = /^[a-zA-Z0-9_]+$/;
-  let regEmail = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
-  if(!form.author_name || !regName.test(form.author_name))
-  {
-    
-    
-    
-    // console.log(document.querySelector(`[name=author_name]`));
-    
-    document.querySelector(`[name=author_name]`).classList.add("is-invalid");
-  }
+const validation = {
+  regName: /^[a-zA-Z0-9_]+$/,
+  regEmail: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/,
+  login: function (form) {
+    if (!form.author_name || !this.regName.test(form.author_name)) {
+      document.querySelector(`[name=author_name]`).classList.add("is-invalid");
+    }
 
-  if(!form.author_email || !regEmail.test(form.author_email) ){
-    document.querySelector(`[name=author_email]`).classList.add("is-invalid");
-    // document.querySelector(`[name=author_email]`).nextElementSibling.classList.add("");
-    
-  }
+    if (!form.author_email || !this.regEmail.test(form.author_email)) {
+      document.querySelector(`[name=author_email]`).classList.add("is-invalid");
+    }
 
-  if(!form.topic_title || !regName.test(form.topic_title) ){
-    document.querySelector(`[name=topic_title]`).classList.add("is-invalid");
-    // document.querySelector(`[name=author_email]`).nextElementSibling.classList.add("");
-    
-  }
-  if(!form.topic_details || form.topic_details.length > 100){
-    
-    
-    document.querySelector(`[name=topic_details]`).classList.add("is-invalid");
-    // document.querySelector(`[name=author_email]`).nextElementSibling.classList.add("");
-    
-  }
- const is_invalid = document.getElementById('form-request').querySelectorAll('.is-invalid');
-  if (is_invalid.length) {
-      is_invalid.forEach(function(element){
-        element.addEventListener('input',function () {
-            element.classList.remove('is-invalid')
-        })
-      })
-    return false;
-  }
+    const is_invalid = document
+      .getElementById("form-login-request")
+      .querySelectorAll(".is-invalid");
+    if (is_invalid.length) {
+      is_invalid.forEach(function (element) {
+        element.addEventListener("input", function () {
+          element.classList.remove("is-invalid");
+        });
+      });
+      return false;
+    }
 
-return true;
-}
+    return true;
+  },
+  appContent: function (form) {
+    if (!form.topic_title || !this.regName.test(form.topic_title)) {
+      document.querySelector(`[name=topic_title]`).classList.add("is-invalid");
+    }
+    if (!form.topic_details || form.topic_details.length > 100) {
+      document
+        .querySelector(`[name=topic_details]`)
+        .classList.add("is-invalid");
+    }
+    const is_invalid = document
+      .getElementById("form-request")
+      .querySelectorAll(".is-invalid");
+    if (is_invalid.length) {
+      is_invalid.forEach(function (element) {
+        element.addEventListener("input", function () {
+          element.classList.remove("is-invalid");
+        });
+      });
+      return false;
+    }
 
-
-
-
+    return true;
+  },
+};
 
 search.addEventListener(
   "input",
